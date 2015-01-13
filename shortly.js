@@ -2,8 +2,8 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
-
-
+var cookieParser = require('cookie-parser');
+var session = require('express-session');
 var db = require('./app/config');
 var Users = require('./app/collections/users');
 var User = require('./app/models/user');
@@ -12,6 +12,7 @@ var Link = require('./app/models/link');
 var Click = require('./app/models/click');
 
 var app = express();
+
 
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
@@ -22,10 +23,27 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
+// app.use(express.cookieParser('shhhh, very secret'));
+app.use(session({
+  secret: 'keyboard cat',
+  resave: false,
+  saveUninitialized: true
+}));
+
+var restrict = function(req, res, next) {
+  if (req.session.user) {
+    next();
+  } else {
+    req.session.error = 'Access denied!';
+    res.redirect('/login');
+  }
+};
 
 app.get('/',
 function(req, res) {
-  res.render('index');
+  restrict(req, res, function() {
+    res.render('index');
+  });
 });
 
 app.get('/create',
@@ -65,35 +83,6 @@ function(req, res) {
     Users.add(newUser);
     res.send(200, newUser);
   });
-
-  // if (!util.isValidUrl(uri)) {
-  //   console.log('Not a valid url: ', uri);
-  //   return res.send(404);
-  // }
-
-  // new Link({ url: uri }).fetch().then(function(found) {
-  //   if (found) {
-  //     res.send(200, found.attributes);
-  //   } else {
-  //     util.getUrlTitle(uri, function(err, title) {
-  //       if (err) {
-  //         console.log('Error reading URL heading: ', err);
-  //         return res.send(404);
-  //       }
-
-  //       var link = new Link({
-  //         url: uri,
-  //         title: title,
-  //         base_url: req.headers.origin
-  //       });
-
-  //       link.save().then(function(newLink) {
-  //         Links.add(newLink);
-  //         res.send(200, newLink);
-  //       });
-  //     });
-  //   }
-  // });
 });
 
 app.post('/links',
