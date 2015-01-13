@@ -48,13 +48,17 @@ function(req, res) {
 
 app.get('/create',
 function(req, res) {
-  res.render('index');
+  restrict(req, res, function() {
+    res.render('index');
+  });
 });
 
 app.get('/links',
 function(req, res) {
-  Links.reset().fetch().then(function(links) {
-    res.send(200, links.models);
+  restrict(req, res, function() {
+    Links.reset().fetch().then(function(links) {
+      res.send(200, links.models);
+    });
   });
 });
 
@@ -123,6 +127,19 @@ function(req, res) {
 // Write your authentication routes here
 /************************************************************/
 
+app.post('/signup', function(req, res) {
+  var username = req.body.username;
+  var password = req.body.password;
+
+  var user = new User({
+    username: username,
+    password: password
+  });
+  user.save().then(function(model) {
+    res.redirect('/');
+    res.json(model);
+  });
+});
 
 
 /************************************************************/
