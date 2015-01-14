@@ -10,6 +10,7 @@ var User = require('./app/models/user');
 var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
+var bcrypt = require('bcrypt-nodejs');
 
 var app = express();
 
@@ -72,21 +73,35 @@ function(req, res) {
   res.render('signup');
 });
 
+app.get('/logout',
+function(req, res) {
+  req.session.user = false;
+  res.redirect('/login');
+});
+
 app.post('/login',
 function(req, res) {
 
   var username = req.body.username;
   var password = req.body.password;
+  var salt;
+  var thisUser;
 
-  var user = new User({
-    username: username,
-    password: password
-  });
-
-  user.save().then(function(newUser) {
-    Users.add(newUser);
-    res.send(200, newUser);
-  });
+  db.knex('users')
+    .where('username', '=', username)
+    .then(function(user){
+      if (user[0].username) {
+        thisUser = user[0];
+        salt = user[0].salt;
+        password = bcrypt.hashSync(password, salt);
+      }
+      if (thisUser.username === username && thisUser.password === password) {
+        req.session.user = true;
+        res.redirect('/');
+      }
+    }).catch(function(err){
+      res.redirect('/login');
+    });
 });
 
 app.post('/links',
@@ -130,14 +145,19 @@ function(req, res) {
 app.post('/signup', function(req, res) {
   var username = req.body.username;
   var password = req.body.password;
+  var salt = bcrypt.genSaltSync(10);
+  var hash = bcrypt.hashSync(password, salt);
 
   var user = new User({
     username: username,
-    password: password
+    password: hash,
+    salt: salt
   });
   user.save().then(function(model) {
+    req.session.user = true;
     res.redirect('/');
     res.json(model);
+
   });
 });
 
